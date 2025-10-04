@@ -1,6 +1,18 @@
 package shortner
 
-func Url_shorten(id int,longurl string) string{
-	
-	return "This is test"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+)
+
+func Url_shorten(id string,longurl string) string{
+
+	hasher := sha256.New()
+	hasher.Write([]byte(longurl))
+	hashInbytes := hasher.Sum(nil)
+	hashInstring := hex.EncodeToString(hashInbytes)
+
+	hashInstring = hashInstring[:6]
+
+	return hashInstring
 }
