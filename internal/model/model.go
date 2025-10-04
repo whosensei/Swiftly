@@ -4,18 +4,17 @@ import "time"
 
 type User_request struct {
 	Long_url string `json:"longurl"`
-	User_id       int `json:"userId"`
+	Id  string `json:"userId"`
 }
 
-type Api_response struct{
-	Success bool `json:"success"`
+type Api_response struct {
+	Success bool   `json:"success"`
 	Message string `json:"message"`
-	Data interface{} `json:"data"`
+	Data    any    `json:"data"`
 }
 
 type Short_url struct {
-	User_id int `json:"userId"`
-	Short_url string `json:"shorturl"`
-	Long_url string `json:"longurl"`
-	Created_at time.Time  `json:"created_at"`
+	Long_url   string    `json:"longurl"`
+	Short_url  string    `json:"shorturl"`
+	Created_at time.Time `json:"created_at"`
 }
