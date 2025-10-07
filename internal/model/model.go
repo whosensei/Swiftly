@@ -1,10 +1,7 @@
 package model
 
-import "time"
-
 type User_request struct {
-	Long_url string `json:"longurl"`
-	Id  string `json:"userId"`
+	Long_url string `json:"long_url"`
 }
 
 type Api_response struct {
@@ -14,7 +11,6 @@ type Api_response struct {
 }
 
 type Short_url struct {
-	Long_url   string    `json:"longurl"`
-	Short_url  string    `json:"shorturl"`
-	Created_at time.Time `json:"created_at"`
+	Long_url  string `json:"longurl"`
+	Short_url string `json:"shorturl"`
 }

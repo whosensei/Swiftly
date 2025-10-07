@@ -5,13 +5,12 @@ import (
 	"encoding/hex"
 )
 
-func Url_shorten(id string,longurl string) string{
+func Url_shorten(longurl string) string{
 
 	hasher := sha256.New()
 	hasher.Write([]byte(longurl))
 	hashInbytes := hasher.Sum(nil)
 	hashInstring := hex.EncodeToString(hashInbytes)
-
 	hashInstring = hashInstring[:6]
 
 	return hashInstring
