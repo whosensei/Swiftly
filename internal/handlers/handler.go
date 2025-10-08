@@ -1,15 +1,19 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github/whosensei/shortenn/internal/database"
 	"github/whosensei/shortenn/internal/model"
 	"github/whosensei/shortenn/internal/shortner"
-	"github/whosensei/shortenn/internal/store"
 	"net/http"
 )
+type UserHandler struct {
+	DB *sql.DB
+}
 
-func ShortenURL(w http.ResponseWriter, r *http.Request) {
+func(h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	var u model.User_request
 
@@ -20,7 +24,11 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	Short_url := shortner.Url_shorten(u.Long_url)
 
-	store.Add_mapping(Short_url, u.Long_url)
+	data := model.URL{Id:u.Id,Long_url: u.Long_url,Short_url: Short_url}
+
+	if err:= database.URL_Add(h.DB, data); err!=nil {
+		fmt.Println("Failed to add to database")
+	}
 
 	redirect_link := fmt.Sprintf("%s/redirect/%s", "http://localhost:8080", Short_url)
 
@@ -33,10 +41,10 @@ func ShortenURL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func Redirect_to_website(w http.ResponseWriter, r *http.Request) {
+func(h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 
 	shorturl := r.PathValue("shorturl")
-	longurl := store.Redirect(shorturl)
+	longurl := database.Redirect(h.DB,shorturl)
 
 	fmt.Println(longurl)
 	if longurl == "" {
@@ -48,8 +56,8 @@ func Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func Gettallmaps(w http.ResponseWriter, r* http.Request){
-	data := store.Getallmaps()
+func(h * UserHandler) Gettallmaps(w http.ResponseWriter, r* http.Request){
+	data := database.Getallurls(h.DB)
 	w.Header().Set("content-type","application-json")
 	json.NewEncoder(w).Encode(data)
 }
