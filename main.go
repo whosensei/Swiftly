@@ -6,11 +6,14 @@ import (
 	"github/whosensei/shortenn/internal/handlers"
 	"github/whosensei/shortenn/internal/middleware"
 	"net/http"
+	"os"
+	"github.com/joho/godotenv"
 )
 
 func main(){
 
-	connStr := ""
+	_ = godotenv.Load()
+	connStr := os.Getenv("DATABASE_URL")
 	db := database.Connect(connStr)
 	defer db.Close()
 	
