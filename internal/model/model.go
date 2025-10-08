@@ -1,7 +1,8 @@
 package model
 
 type User_request struct {
-	Long_url string `json:"long_url"`
+	Id int `json:"id"`
+	Long_url string `json:"longurl"`
 }
 
 type Api_response struct {
@@ -10,7 +11,9 @@ type Api_response struct {
 	Data    any    `json:"data"`
 }
 
-type Short_url struct {
-	Long_url  string `json:"longurl"`
-	Short_url string `json:"shorturl"`
+type URL struct {
+	Id         int    `json:"id"`
+	Long_url   string `json:"longurl"`
+	Short_url  string `json:"shorturl"`
+	Created_At string `json:"created_at"`
 }
