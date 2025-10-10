@@ -21,10 +21,10 @@ func(h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get the body", http.StatusBadRequest)
 		return
 	}
+	id := shortner.GenerateId()
 
-	Short_url := shortner.Url_shorten(u.Long_url)
-
-	data := model.URL{Id:u.Id,Long_url: u.Long_url,Short_url: Short_url}
+	Short_url := shortner.Url_shorten(id,u.Long_url)
+	data := model.URL{Id:id,Long_url: u.Long_url,Short_url: Short_url}
 
 	if err:= database.URL_Add(h.DB, data); err!=nil {
 		fmt.Println("Failed to add to database")

@@ -36,7 +36,7 @@ func Redirect(db *sql.DB, shorturl string) string {
 }
 
 func Getallurls(db *sql.DB) []model.URL{
-	query := `SELECT id, shorturl,longurl FROM url`
+	query := `SELECT id, shorturl,longurl,created_at FROM url`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -47,7 +47,7 @@ func Getallurls(db *sql.DB) []model.URL{
 
 	for rows.Next() {
 		var url model.URL
-		if err := rows.Scan(&url.Id, &url.Short_url, &url.Long_url); err != nil {
+		if err := rows.Scan(&url.Id, &url.Short_url, &url.Long_url,&url.Created_At); err != nil {
 			log.Println("error occured", err)
 			continue
 		}
