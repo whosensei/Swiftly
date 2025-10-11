@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func main(){
@@ -19,7 +20,9 @@ func main(){
 	
 	mux := http.NewServeMux()
 	handlers.RegisterRoute(mux,db)
-	loggedMux := middleware.Logger(mux)
+
+	c := cors.AllowAll()
+	loggedMux := c.Handler(middleware.Logger(mux))
 
 	fmt.Println("The server started")
 	http.ListenAndServe(":8080",loggedMux)
