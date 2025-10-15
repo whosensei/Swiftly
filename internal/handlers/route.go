@@ -10,6 +10,6 @@ func RegisterRoute(mux *http.ServeMux , db *sql.DB) {
 	userHandler := &UserHandler{DB:db}
 
 	mux.HandleFunc("POST /shorten", userHandler.ShortenURL)
-	mux.HandleFunc("GET /redirect/{shorturl}", userHandler.Redirect_to_website)
+	mux.HandleFunc("GET /{shorturl}", userHandler.Redirect_to_website)
 	mux.HandleFunc("GET /getall" ,userHandler.Gettallmaps)
 }
