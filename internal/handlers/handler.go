@@ -30,7 +30,7 @@ func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	if err := database.URL_Add(h.DB, data); err != nil {
 		fmt.Println("Failed to add to database")
 	}
-	redirect_link := fmt.Sprintf("%s/%s","https://swiftly-be-45zyu.ondigitalocean.app",Short_url)
+	redirect_link := fmt.Sprintf("%s/%s","https://www.swftly.dev",Short_url)
 
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
