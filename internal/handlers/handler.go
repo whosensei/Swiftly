@@ -9,11 +9,12 @@ import (
 	"github/whosensei/shortenn/internal/shortner"
 	"net/http"
 )
+
 type UserHandler struct {
 	DB *sql.DB
 }
 
-func(h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	var u model.User_request
 
@@ -23,13 +24,13 @@ func(h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	}
 	id := shortner.GenerateId()
 
-	Short_url := shortner.Url_shorten(id,u.Long_url)
-	data := model.URL{Id:id,Long_url: u.Long_url,Short_url: Short_url}
+	Short_url := shortner.Url_shorten(id, u.Long_url)
+	data := model.URL{Id: id, Long_url: u.Long_url, Short_url: Short_url}
 
-	if err:= database.URL_Add(h.DB, data); err!=nil {
+	if err := database.URL_Add(h.DB, data); err != nil {
 		fmt.Println("Failed to add to database")
 	}
-	redirect_link := fmt.Sprintf("%s/redirect/%s","https://swftly.dev",Short_url)
+	redirect_link := fmt.Sprintf("%s/%s","https://swiftly-be-45zyu.ondigitalocean.app/",Short_url)
 
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -40,10 +41,10 @@ func(h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func(h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 
 	shorturl := r.PathValue("shorturl")
-	longurl := database.Redirect(h.DB,shorturl)
+	longurl := database.Redirect(h.DB, shorturl)
 
 	fmt.Println(longurl)
 	if longurl == "" {
@@ -54,9 +55,8 @@ func(h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request)
 	http.Redirect(w, r, longurl, http.StatusFound)
 }
 
-
-func(h * UserHandler) Gettallmaps(w http.ResponseWriter, r* http.Request){
+func (h *UserHandler) Gettallmaps(w http.ResponseWriter, r *http.Request) {
 	data := database.Getallurls(h.DB)
-	w.Header().Set("content-type","application-json")
+	w.Header().Set("content-type", "application-json")
 	json.NewEncoder(w).Encode(data)
 }
