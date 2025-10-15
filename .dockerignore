@@ -1,0 +1,12 @@
+# OS junk
+.DS_Store
+
+# Git and local configs
+.git
+.gitignore
+.env
+
+# Build artifacts
+/tmp
+/bin
+/build
