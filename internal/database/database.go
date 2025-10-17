@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -20,6 +19,6 @@ func Connect(connStr string) *sql.DB {
 		log.Fatal("Failed to connect")
 	}
 
-	fmt.Println("Database connected successfully")
+	log.Println("Database connected")
 	return db
 }

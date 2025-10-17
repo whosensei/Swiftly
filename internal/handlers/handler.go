@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github/whosensei/shortenn/internal/database"
 	"github/whosensei/shortenn/internal/model"
-	"github/whosensei/shortenn/internal/shortner"
+	"github/whosensei/shortenn/internal/utils"
 	"net/http"
 )
 
@@ -22,9 +22,9 @@ func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get the body", http.StatusBadRequest)
 		return
 	}
-	id := shortner.GenerateId()
+	id := utils.GenerateId()
 
-	Short_url := shortner.Url_shorten(id, u.Long_url)
+	Short_url := utils.Url_shorten(id, u.Long_url)
 	data := model.URL{Id: id, Long_url: u.Long_url, Short_url: Short_url}
 
 	if err := database.URL_Add(h.DB, data); err != nil {
