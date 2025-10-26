@@ -2,7 +2,10 @@ package auth
 
 import (
 	"context"
+	"github/whosensei/shortenn/internal/utils"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -16,17 +19,35 @@ type contextKey string
 
 const UserIDKey contextKey = "userID"
 
-func InitJWKS(betterAuthURL string) error {
+func InitJWKS() error {
+
+	utils.LoadENV()
+	betterAuthURL := os.Getenv("BETTER_AUTH_URL")
+	if betterAuthURL == "" {
+		betterAuthURL = "http://localhost:3000"
+	}
+
 	var err error
 	jwks, err = keyfunc.Get(betterAuthURL+"/api/auth/jwks", keyfunc.Options{
 		RefreshInterval:   1 * time.Hour,
 		RefreshUnknownKID: true,
 	})
-	return err
+
+	if err != nil {
+		log.Fatal("failed to initalise JWKS")
+		return err
+	}
+
+	log.Println("JWKS initialized")
+	return nil
 }
 
 func JWTCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// warn if JWKS hasn't been initialized
+		if jwks == nil {
+			log.Println("JWKS not initialized; call InitJWKS() before using JWTCheckMiddleware")
+		}
 		authHeader := r.Header.Get("Authorization")
 
 		if strings.HasPrefix(authHeader, "Bearer ") {
@@ -37,7 +58,17 @@ func JWTCheckMiddleware(next http.Handler) http.Handler {
 				jwt.WithAudience("http://localhost:3000"),
 			)
 
-			if err == nil && token.Valid {
+			if err != nil {
+				log.Printf("jwt.Parse error: %v", err)
+			}
+
+			if token == nil {
+				log.Println("jwt.Parse returned nil token")
+			} else {
+				log.Printf("parsed token valid=%v", token.Valid)
+			}
+
+			if err == nil && token != nil && token.Valid {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
 					if sub, ok := claims["sub"].(string); ok {
 						r = r.WithContext(context.WithValue(r.Context(), UserIDKey, sub))
@@ -46,7 +77,6 @@ func JWTCheckMiddleware(next http.Handler) http.Handler {
 			}
 		}
 		next.ServeHTTP(w, r)
-
 	})
 }
 
