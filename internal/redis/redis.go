@@ -2,8 +2,10 @@ package redis
 
 import (
 	"context"
-	"github.com/redis/go-redis/v9"
+	"github/whosensei/shortenn/internal/utils"
+	"log"
 	"os"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -11,7 +13,9 @@ var (
 	ctx    = context.Background()
 )
 
-func InitRedis() error {
+func InitRedis() (*redis.Client, error) {
+
+	utils.LoadENV()
 
 	redis_url := os.Getenv("REDIS_URL")
 	if redis_url == "" {
@@ -20,13 +24,15 @@ func InitRedis() error {
 	
 	opt, err := redis.ParseURL(redis_url)
 	if err != nil {
-		return err
+		return nil,err
 	} 
 
 	Client = redis.NewClient(opt)
 
 	if err := Client.Ping(ctx).Err(); err != nil {
-		return err
+		return nil,err
 	}
-	return nil
+
+	log.Println("Redis Connected")
+	return Client, nil
 }
