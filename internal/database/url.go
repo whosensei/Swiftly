@@ -15,16 +15,16 @@ import (
 // 	return err;
 // }
 
-func URL_Add(db *sql.DB, u model.URL) error {
-	query := `INSERT INTO url (id,shorturl,longurl,created_at) VALUES ($1,$2,$3,$4)`
-	_, err := db.Exec(query, u.Id, u.Short_url, u.Long_url, time.Now())
+// func URL_Add(db *sql.DB, u model.URL) error {
+// 	query := `INSERT INTO url (id,shorturl,longurl,created_at) VALUES ($1,$2,$3,$4)`
+// 	_, err := db.Exec(query, u.Id, u.Short_url, u.Long_url, time.Now())
 
-	if err != nil {
-		fmt.Println("failed to insert into database")
-	}
+// 	if err != nil {
+// 		fmt.Println("failed to insert into database")
+// 	}
 
-	return err
-}
+// 	return err
+// }
 
 func Redirect(db *sql.DB, shorturl string) string {
 	var u string
@@ -35,7 +35,7 @@ func Redirect(db *sql.DB, shorturl string) string {
 	return u
 }
 
-func Getallurls(db *sql.DB) []model.URL{
+func Getallurls(db *sql.DB) []model.URL {
 	query := `SELECT id, shorturl,longurl,created_at FROM url`
 
 	rows, err := db.Query(query)
@@ -47,11 +47,17 @@ func Getallurls(db *sql.DB) []model.URL{
 
 	for rows.Next() {
 		var url model.URL
-		if err := rows.Scan(&url.Id, &url.Short_url, &url.Long_url,&url.Created_At); err != nil {
+		if err := rows.Scan(&url.Id, &url.Short_url, &url.Long_url, &url.Created_At); err != nil {
 			log.Println("error occured", err)
 			continue
 		}
 		u = append(u, url)
 	}
 	return u
+}
+
+func Add_anon_url(db *sql.DB, short_code string, long_url string, anonymous_token string, ip_address string, expires_at time.Time) error {
+	query := `INSERT INTO urls (short_code,long_url,anonymous_token,ip_address,expires_at) VALUES ($1,$2,$3,$4,$5)`
+	_, err := db.Exec(query, short_code, long_url, anonymous_token, ip_address, expires_at)
+	return err
 }
