@@ -3,6 +3,8 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
+
 	// "github.com/redis/go-redis/v9"
 	"fmt"
 	"github/whosensei/shortenn/internal/auth"
@@ -12,12 +14,20 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
 	DB *sql.DB
 	// redis *redis.Client
 }
+
+var (
+	Anonymous_TTL    = time.Duration(30) * time.Minute   // url expiry time 30 min
+	Anonymous_Window = time.Duration(60) * time.Minute   // 60 min rate limit window
+	Anonymous_Limit  = 5   // 5 url limit
+)
 
 func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
@@ -44,19 +54,34 @@ func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) AnonymousShorten(w http.ResponseWriter, r *http.Request, longurl string, id string) {
 
-	token := r.Header.Get("Anonymous_Token")
+	anonymous_token := r.Header.Get("Anonymous_Token")
+	if anonymous_token == "" {
+		anonymous_token = uuid.New().String()
+	}
+
 	//check ratelimits
-	Short_url := utils.Url_shorten(id, longurl)
-	//add to database, Short_url,long_url,token,expires_at,created_at
+
+	short_code := utils.Url_shorten(id, longurl)
+	expires_at := time.Now().Add(30 * time.Minute)
+
+	err := database.Add_anon_url(h.DB,short_code,longurl,anonymous_token,utils.GetClientIP(r),expires_at)
+	if err != nil {
+		log.Println("Failed to add to db", err)
+		http.Error(w, "Failed to create the url", http.StatusInternalServerError)
+		return
+	}
+
 	baseurl := os.Getenv("BACKEND_URL")
 	if baseurl == "" {
 		baseurl = "https://localhost:8080"
 	}
 
 	response := model.ShortenResponse{
-		Data: fmt.Sprintf("%s/%s", baseurl, Short_url),
-		Anonymous_Token: token,
-		//add rest
+		Data:            fmt.Sprintf("%s/%s", baseurl, short_code),
+		Shortcode:       short_code,
+		Expires_at:      expires_at,
+		Anonymous_Token: anonymous_token,
+		// Remaining: remaining-1,
 	}
 
 	w.Header().Set("content-type", "application/json")
@@ -68,7 +93,10 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 	//using userID find uuid for user,
 	// add links for that uuid in url table;
 
-	Short_url := utils.Url_shorten(id, longurl)
+	userID := auth.GetUserId(r);
+
+
+	short_code := utils.Url_shorten(id, longurl)
 
 	baseurl := os.Getenv("BACKEND_URL")
 	if baseurl == "" {
@@ -76,7 +104,9 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := model.ShortenResponse{
-		Data: fmt.Sprintf("%s/%s", baseurl, Short_url),
+		Data: fmt.Sprintf("%s/%s", baseurl, short_code),
+		Permanent: true,
+		
 		//add rest
 	}
 
