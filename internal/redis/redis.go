@@ -58,7 +58,6 @@ func CheckRateLimit(key string, maxRequests int, window time.Duration) (bool, in
     return count <= maxRequests, remaining, nil
 }
 
-
 func IncrementClicks(shortCode string) error {
     clickKey := fmt.Sprintf("clicks:%s", shortCode)
     return Client.Incr(Ctx, clickKey).Err()
@@ -71,4 +70,16 @@ func GetClickCount(shortCode string) (int64, error) {
         return 0, nil
     }
     return count, err
+}
+
+func GetRemainingCount(key string, maxRequests int) int {
+    rateLimitKey := fmt.Sprintf("ratelimit:%s", key)
+    count, err := Client.Get(Ctx, rateLimitKey).Int()
+    if err == redis.Nil {
+        return maxRequests
+    }
+    if err != nil {
+        return maxRequests
+    }
+    return max(0, maxRequests-count)
 }
