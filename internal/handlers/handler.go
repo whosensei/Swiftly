@@ -101,12 +101,16 @@ func (h *UserHandler) AnonymousShorten(w http.ResponseWriter, r *http.Request, l
 }
 
 func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Request, longurl string, id string) {
-	//using userID find uuid for user,
-	// add links for that uuid in url table;
 
-	// userID := auth.GetUserId(r);
+	userID := auth.GetUserId(r);
+	uuid := database.Find_uuid_from_UserID(h.DB,userID);
 
 	short_code := utils.Url_shorten(id, longurl)
+
+	err := database.Add_authenticated_url(h.DB, short_code, longurl, uuid, utils.GetClientIP(r));
+	if err != nil {
+		log.Fatal("failed to add to database")
+	}
 
 	baseurl := os.Getenv("BACKEND_URL")
 	if baseurl == "" {
@@ -116,8 +120,7 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 	response := model.ShortenResponse{
 		Data:      fmt.Sprintf("%s/%s", baseurl, short_code),
 		Permanent: true,
-
-		//add rest
+		Shortcode:       short_code,
 	}
 
 	w.Header().Set("content-type", "application/json")
@@ -138,10 +141,4 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 	}
 
 	http.Redirect(w, r, longurl, http.StatusFound)
-}
-
-func (h *UserHandler) Gettallmaps(w http.ResponseWriter, r *http.Request) {
-	data := database.Getallurls(h.DB)
-	w.Header().Set("content-type", "application-json")
-	json.NewEncoder(w).Encode(data)
 }
