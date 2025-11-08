@@ -83,3 +83,21 @@ func GetRemainingCount(key string, maxRequests int) int {
     }
     return max(0, maxRequests-count)
 }
+
+func GetAllClickCounts() (map[string]int64, error) {
+    keys, err := Client.Keys(Ctx, "clicks:*").Result()
+    if err != nil {
+        return nil, err
+    }
+
+    counts := make(map[string]int64)
+    for _, key := range keys {
+        count, err := Client.Get(Ctx, key).Int64()
+        if err == nil {
+            shortCode := key[7:] // Remove "clicks:" prefix
+            counts[shortCode] = count
+        }
+    }
+
+    return counts, nil
+}
