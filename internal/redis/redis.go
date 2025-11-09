@@ -94,10 +94,22 @@ func GetAllClickCounts() (map[string]int64, error) {
     for _, key := range keys {
         count, err := Client.Get(Ctx, key).Int64()
         if err == nil {
-            shortCode := key[7:] // Remove "clicks:" prefix
+            shortCode := key[6:] // Remove "clicks:" prefix
             counts[shortCode] = count
         }
     }
 
     return counts, nil
+}
+
+func ResetClickCount(shortCode string) error {
+    clickKey := fmt.Sprintf("clicks:%s", shortCode)
+    return Client.Del(Ctx, clickKey).Err()
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
 }
