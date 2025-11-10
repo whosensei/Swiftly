@@ -142,3 +142,18 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 
 	http.Redirect(w, r, longurl, http.StatusFound)
 }
+
+func CleanupExpiredURLs(database *sql.DB) {
+    ticker := time.NewTicker(1 * time.Hour)
+    for range ticker.C {
+        result, err := database.Exec(`
+            DELETE FROM urls WHERE expires_at IS NOT NULL AND expires_at < NOW()
+        `)
+        if err == nil {
+            count, _ := result.RowsAffected()
+            if count > 0 {
+                log.Printf("🧹 Cleaned up %d expired URLs", count)
+            }
+        }
+    }
+}
