@@ -131,14 +131,24 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 
 func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 
-	shorturl := r.PathValue("shorturl")
-	longurl := database.Redirect(h.DB, shorturl)
+	short_code := r.PathValue("short_code")
+	longurl,url_id := database.Redirect(h.DB, short_code)
 
 	fmt.Println(longurl)
 	if longurl == "" {
 		http.NotFound(w, r)
 		return
 	}
+
+	go func() {
+        redis.IncrementClicks(short_code)
+        
+        // Log detailed click event to DB
+        h.DB.Exec(`
+            INSERT INTO clicks (url_id, ip_address, user_agent, referer)
+            VALUES ($1, $2, $3, $4)
+        `, url_id, utils.GetClientIP(r), r.UserAgent(), r.Referer())
+    }()
 
 	http.Redirect(w, r, longurl, http.StatusFound)
 }
