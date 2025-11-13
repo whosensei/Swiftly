@@ -55,7 +55,7 @@ func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) AnonymousShorten(w http.ResponseWriter, r *http.Request, longurl string, id string) {
 
-	anonymous_token := r.Header.Get("Anonymous_Token")
+	anonymous_token := r.Header.Get("X-Anonymous-Token")
 	if anonymous_token == "" {
 		anonymous_token = uuid.New().String()
 	}
@@ -132,11 +132,16 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 
 	short_code := r.PathValue("short_code")
-	longurl,url_id := database.Redirect(h.DB, short_code)
+	longurl,url_id,expires_at := database.Redirect(h.DB, short_code)
 
 	fmt.Println(longurl)
 	if longurl == "" {
 		http.NotFound(w, r)
+		return
+	}
+
+	if expires_at.Valid && time.Now().After(expires_at.Time){
+		http.Error(w,"The short url has expired",http.StatusGone)
 		return
 	}
 
@@ -153,6 +158,38 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, longurl, http.StatusFound)
 }
 
+func(h *UserHandler) Get_anon_urls(w http.ResponseWriter, r *http.Request){
+	
+	anonymous_token := r.Header.Get("X-Anonymous-Token")
+	if anonymous_token == ""{
+		json.NewEncoder(w).Encode([]model.URL{});
+	}
+
+	anon_urls,err := database.Get_anon_urls(h.DB,anonymous_token)
+	if err != nil {
+		log.Fatal("failed to fetch urls from database")
+	}
+
+
+	w.Header().Set("Content-type","application/json");
+	json.NewEncoder(w).Encode(anon_urls);
+}
+
+func(h *UserHandler) Get_auth_urls(w http.ResponseWriter, r * http.Request){
+
+	userID := auth.GetUserId(r)
+	uuid := database.Find_uuid_from_UserID(h.DB,userID)
+	
+	auth_urls,err := database.Get_auth_urls(h.DB,uuid)
+	if err != nil {
+		log.Println("failed to fetch the urls")
+	}
+
+	w.Header().Set("Content-type","application/json")
+	json.NewEncoder(w).Encode(auth_urls)
+
+}
+
 func CleanupExpiredURLs(database *sql.DB) {
     ticker := time.NewTicker(1 * time.Hour)
     for range ticker.C {
@@ -162,7 +199,7 @@ func CleanupExpiredURLs(database *sql.DB) {
         if err == nil {
             count, _ := result.RowsAffected()
             if count > 0 {
-                log.Printf("🧹 Cleaned up %d expired URLs", count)
+                log.Printf("Cleaned up %d expired URLs", count)
             }
         }
     }
