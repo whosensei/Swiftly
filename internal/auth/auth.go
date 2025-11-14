@@ -17,7 +17,11 @@ var jwks *keyfunc.JWKS
 
 type contextKey string
 
-const UserIDKey contextKey = "userID"
+const (
+	UserIDKey    contextKey = "userID"
+	UserEmailKey contextKey = "userEmail"
+	UserNameKey  contextKey = "userName"
+)
 
 func InitJWKS() error {
 
@@ -44,7 +48,6 @@ func InitJWKS() error {
 
 func JWTCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// warn if JWKS hasn't been initialized
 		if jwks == nil {
 			log.Println("JWKS not initialized; call InitJWKS() before using JWTCheckMiddleware")
 		}
@@ -70,9 +73,21 @@ func JWTCheckMiddleware(next http.Handler) http.Handler {
 
 			if err == nil && token != nil && token.Valid {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					ctx := r.Context()
+
 					if sub, ok := claims["sub"].(string); ok {
-						r = r.WithContext(context.WithValue(r.Context(), UserIDKey, sub))
+						ctx = context.WithValue(ctx, UserIDKey, sub)
 					}
+
+					if email, ok := claims["email"].(string); ok {
+						ctx = context.WithValue(ctx, UserEmailKey, email)
+					}
+
+					if name, ok := claims["name"].(string); ok {
+						ctx = context.WithValue(ctx, UserNameKey, name)
+					}
+
+					r = r.WithContext(ctx)
 				}
 			}
 		}
@@ -94,6 +109,20 @@ func RequiredAuth(next http.Handler) http.Handler {
 func GetUserId(r *http.Request) string {
 	if userID, ok := r.Context().Value(UserIDKey).(string); ok {
 		return userID
+	}
+	return ""
+}
+
+func GetUserEmail(r *http.Request) string {
+	if email, ok := r.Context().Value(UserEmailKey).(string); ok {
+		return email
+	}
+	return ""
+}
+
+func GetUserName(r *http.Request) string {
+	if name, ok := r.Context().Value(UserNameKey).(string); ok {
+		return name
 	}
 	return ""
 }

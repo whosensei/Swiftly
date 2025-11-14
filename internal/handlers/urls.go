@@ -41,7 +41,6 @@ func (h *UserHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	id := utils.GenerateId()
 
-	// determine whether the request is authenticated
 	userID := auth.GetUserId(r)
 
 	if userID == "" {
@@ -60,7 +59,6 @@ func (h *UserHandler) AnonymousShorten(w http.ResponseWriter, r *http.Request, l
 		anonymous_token = uuid.New().String()
 	}
 
-	//check ratelimits
 	allowed, remaining, err := redis.CheckRateLimit(anonymous_token, 5, Anonymous_Window)
 
 	if err != nil {
@@ -102,14 +100,24 @@ func (h *UserHandler) AnonymousShorten(w http.ResponseWriter, r *http.Request, l
 
 func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Request, longurl string, id string) {
 
-	userID := auth.GetUserId(r);
-	uuid := database.Find_uuid_from_UserID(h.DB,userID);
+	userID := auth.GetUserId(r)
+	email := auth.GetUserEmail(r)
+	name := auth.GetUserName(r)
+
+	uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
+	if err != nil {
+		log.Printf("Failed to ensure user exists: %v", err)
+		http.Error(w, "Failed to process request", http.StatusInternalServerError)
+		return
+	}
 
 	short_code := utils.Url_shorten(id, longurl)
 
-	err := database.Add_authenticated_url(h.DB, short_code, longurl, uuid, utils.GetClientIP(r));
+	err = database.Add_authenticated_url(h.DB, short_code, longurl, uuid, utils.GetClientIP(r))
 	if err != nil {
-		log.Fatal("failed to add to database")
+		log.Printf("Failed to add URL to database: %v", err)
+		http.Error(w, "Failed to create short URL", http.StatusInternalServerError)
+		return
 	}
 
 	baseurl := os.Getenv("BACKEND_URL")
@@ -120,7 +128,7 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 	response := model.ShortenResponse{
 		Data:      fmt.Sprintf("%s/%s", baseurl, short_code),
 		Permanent: true,
-		Shortcode:       short_code,
+		Shortcode: short_code,
 	}
 
 	w.Header().Set("content-type", "application/json")
@@ -133,6 +141,8 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 
 	short_code := r.PathValue("short_code")
 	longurl,url_id,expires_at := database.Redirect(h.DB, short_code)
+
+	utils.GetMetadata(longurl)
 
 	fmt.Println(longurl)
 	if longurl == "" {
@@ -148,7 +158,6 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 	go func() {
         redis.IncrementClicks(short_code)
         
-        // Log detailed click event to DB
         h.DB.Exec(`
             INSERT INTO clicks (url_id, ip_address, user_agent, referer)
             VALUES ($1, $2, $3, $4)
@@ -178,11 +187,21 @@ func(h *UserHandler) Get_anon_urls(w http.ResponseWriter, r *http.Request){
 func(h *UserHandler) Get_auth_urls(w http.ResponseWriter, r * http.Request){
 
 	userID := auth.GetUserId(r)
-	uuid := database.Find_uuid_from_UserID(h.DB,userID)
-	
-	auth_urls,err := database.Get_auth_urls(h.DB,uuid)
+	email := auth.GetUserEmail(r)
+	name := auth.GetUserName(r)
+
+	uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
 	if err != nil {
-		log.Println("failed to fetch the urls")
+		log.Printf("Failed to ensure user exists: %v", err)
+		http.Error(w, "Failed to process request", http.StatusInternalServerError)
+		return
+	}
+
+	auth_urls, err := database.Get_auth_urls(h.DB, uuid)
+	if err != nil {
+		log.Printf("Failed to fetch URLs: %v", err)
+		http.Error(w, "Failed to fetch URLs", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-type","application/json")
