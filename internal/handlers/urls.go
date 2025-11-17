@@ -140,9 +140,11 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request) {
 
 	short_code := r.PathValue("short_code")
-	longurl,url_id,expires_at := database.Redirect(h.DB, short_code)
+	longurl, url_id, expires_at := database.Redirect(h.DB, short_code)
 
-	utils.GetMetadata(longurl)
+	metadata := utils.GetMetadata(longurl)
+	fmt.Println(metadata)
+	//add metadata to db
 
 	fmt.Println(longurl)
 	if longurl == "" {
@@ -150,41 +152,54 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if expires_at.Valid && time.Now().After(expires_at.Time){
-		http.Error(w,"The short url has expired",http.StatusGone)
+	if expires_at.Valid && time.Now().After(expires_at.Time) {
+		http.Error(w, "The short url has expired", http.StatusGone)
 		return
 	}
 
 	go func() {
-        redis.IncrementClicks(short_code)
-        
-        h.DB.Exec(`
-            INSERT INTO clicks (url_id, ip_address, user_agent, referer)
-            VALUES ($1, $2, $3, $4)
-        `, url_id, utils.GetClientIP(r), r.UserAgent(), r.Referer())
-    }()
+		redis.IncrementClicks(short_code)
+
+		user_IP := utils.GetClientIP(r)
+
+		ua := r.UserAgent()
+		details := utils.ParseUserAgent(ua)
+		fmt.Println(details.Device,details.Browser,details.Platform)
+		//get details for the clicks using Ip
+
+		//country, city               done - device_type, browser, os
+
+		_,err := h.DB.Exec(`
+            INSERT INTO clicks (url_id, ip_address, user_agent, referer, device_type, browser, os)
+            VALUES ($1, $2, $3, $4, $5,$6, $7)
+        `, url_id, user_IP, ua, r.Referer(), details.Device, details.Browser, details.Platform)
+		
+		if err != nil {
+			fmt.Println("Failed to add")
+			fmt.Println(err)
+		}
+	}()
 
 	http.Redirect(w, r, longurl, http.StatusFound)
 }
 
-func(h *UserHandler) Get_anon_urls(w http.ResponseWriter, r *http.Request){
-	
+func (h *UserHandler) Get_anon_urls(w http.ResponseWriter, r *http.Request) {
+
 	anonymous_token := r.Header.Get("X-Anonymous-Token")
-	if anonymous_token == ""{
-		json.NewEncoder(w).Encode([]model.URL{});
+	if anonymous_token == "" {
+		json.NewEncoder(w).Encode([]model.URL{})
 	}
 
-	anon_urls,err := database.Get_anon_urls(h.DB,anonymous_token)
+	anon_urls, err := database.Get_anon_urls(h.DB, anonymous_token)
 	if err != nil {
 		log.Fatal("failed to fetch urls from database")
 	}
 
-
-	w.Header().Set("Content-type","application/json");
-	json.NewEncoder(w).Encode(anon_urls);
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(anon_urls)
 }
 
-func(h *UserHandler) Get_auth_urls(w http.ResponseWriter, r * http.Request){
+func (h *UserHandler) Get_auth_urls(w http.ResponseWriter, r *http.Request) {
 
 	userID := auth.GetUserId(r)
 	email := auth.GetUserEmail(r)
@@ -204,22 +219,73 @@ func(h *UserHandler) Get_auth_urls(w http.ResponseWriter, r * http.Request){
 		return
 	}
 
-	w.Header().Set("Content-type","application/json")
+	w.Header().Set("Content-type", "application/json")
 	json.NewEncoder(w).Encode(auth_urls)
 
 }
 
 func CleanupExpiredURLs(database *sql.DB) {
-    ticker := time.NewTicker(1 * time.Hour)
-    for range ticker.C {
-        result, err := database.Exec(`
+	ticker := time.NewTicker(1 * time.Hour)
+	for range ticker.C {
+		result, err := database.Exec(`
             DELETE FROM urls WHERE expires_at IS NOT NULL AND expires_at < NOW()
         `)
-        if err == nil {
-            count, _ := result.RowsAffected()
-            if count > 0 {
-                log.Printf("Cleaned up %d expired URLs", count)
-            }
-        }
-    }
+		if err == nil {
+			count, _ := result.RowsAffected()
+			if count > 0 {
+				log.Printf("Cleaned up %d expired URLs", count)
+			}
+		}
+	}
+}
+
+func (h *UserHandler) Delete_url(w http.ResponseWriter, r *http.Request) {
+
+	short_code := r.PathValue("short_code")
+	if short_code == "" {
+		http.Error(w, "short_code required", http.StatusBadRequest)
+		return
+	}
+
+	userID := auth.GetUserId(r)
+	email := auth.GetUserEmail(r)
+	name := auth.GetUserName(r)
+
+	if userID != "" {
+		uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
+		if err != nil {
+			http.Error(w, "Failed to verify the user", http.StatusInternalServerError)
+			return
+		}
+
+		owned, err := database.Verify_auth_url_ownership(h.DB, short_code, uuid)
+		if !owned || err != nil {
+			http.Error(w, "URL not found or unauthorised", http.StatusForbidden)
+			return
+		}
+	} else {
+		anonymous_token := r.Header.Get("X-Anonymous-Token")
+		if anonymous_token == "" {
+			http.Error(w, "Unauthorised", http.StatusUnauthorized)
+			return
+		}
+
+		owned, err := database.Verify_anon_url_ownership(h.DB, short_code, anonymous_token)
+		if !owned || err != nil {
+			http.Error(w, "URL not found or unauthorised", http.StatusForbidden)
+			return
+		}
+	}
+
+	err := database.Delete_url(h.DB, short_code)
+	if err != nil {
+		http.Error(w, "Failed to delete the URL", http.StatusBadRequest)
+		fmt.Println("Failed to delete the URL")
+		return
+	}
+
+	redis.ResetClickCount(short_code)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode("Url deleted successfully")
 }
