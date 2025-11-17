@@ -121,7 +121,7 @@ func Get_auth_urls(db *sql.DB, user_id string)([]model.URL,error){
 
 func Delete_url(db *sql.DB, short_code string) error{
 
-	query := `DELETE * FROM urls WHERE short_code = $1`
+	query := `DELETE FROM urls WHERE short_code = $1`
 	_,err := db.Exec(query,short_code)
 	if err != nil {
 		log.Println("Failed to delete")
@@ -129,4 +129,24 @@ func Delete_url(db *sql.DB, short_code string) error{
 	}
 	return nil
 
+}
+
+func Verify_anon_url_ownership(db *sql.DB,short_code string,anonymous_token string)(bool,error){
+	var count int;
+	query := `SELECT COUNT(*) FROM urls WHERE short_code=$1 AND anonymous_token=$2`
+	err := db.QueryRow(query,short_code,anonymous_token).Scan(&count)
+	if err != nil {
+		return false,err
+	}
+	return count>0,nil
+}
+
+func Verify_auth_url_ownership(db *sql.DB, short_code string, user_id string)(bool,error){
+	var count int;
+	query := `SELECT COUNT(*) FROM urls WHERE short_code=$1 AND user_id=$2`
+	err := db.QueryRow(query,short_code,user_id).Scan(&count)
+	if err != nil {
+		return false,err
+	}
+	return count>0,nil
 }

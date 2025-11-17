@@ -23,6 +23,7 @@ func CorsInit() *cors.Cors {
 				http.MethodGet,
 				http.MethodPost,
 				http.MethodOptions,
+				http.MethodDelete,
 			},
 			AllowCredentials: true,
 			AllowedHeaders: []string{
@@ -41,6 +42,7 @@ func CorsInit() *cors.Cors {
 				http.MethodGet,
 				http.MethodPost,
 				http.MethodOptions,
+				http.MethodDelete,
 			},
 			AllowCredentials: true,
 			AllowedHeaders: []string{
