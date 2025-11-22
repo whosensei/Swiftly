@@ -14,6 +14,7 @@ import (
 )
 
 var jwks *keyfunc.JWKS
+var betterAuthURL string
 
 type contextKey string
 
@@ -26,7 +27,7 @@ const (
 func InitJWKS() error {
 
 	utils.LoadENV()
-	betterAuthURL := os.Getenv("BETTER_AUTH_URL")
+	betterAuthURL = os.Getenv("BETTER_AUTH_URL")
 	if betterAuthURL == "" {
 		betterAuthURL = "http://localhost:3000"
 	}
@@ -50,7 +51,18 @@ func JWTCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if jwks == nil {
 			log.Println("JWKS not initialized; call InitJWKS() before using JWTCheckMiddleware")
+			http.Error(w, "Internal server error: authentication service not initialized", http.StatusInternalServerError)
+			return
 		}
+
+		if betterAuthURL == "" {
+			utils.LoadENV()
+			betterAuthURL = os.Getenv("BETTER_AUTH_URL")
+			if betterAuthURL == "" {
+				betterAuthURL = "http://localhost:3000"
+			}
+		}
+
 		authHeader := r.Header.Get("Authorization")
 
 		if strings.HasPrefix(authHeader, "Bearer ") {
