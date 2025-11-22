@@ -57,8 +57,8 @@ func JWTCheckMiddleware(next http.Handler) http.Handler {
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 			token, err := jwt.Parse(tokenString, jwks.Keyfunc,
-				jwt.WithIssuer("http://localhost:3000"),
-				jwt.WithAudience("http://localhost:3000"),
+				jwt.WithIssuer(betterAuthURL),
+				jwt.WithAudience(betterAuthURL),
 			)
 
 			if err != nil {

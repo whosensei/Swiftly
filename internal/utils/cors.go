@@ -50,7 +50,10 @@ func CorsInit() *cors.Cors {
 				"Content-Type",
 				"X-Anonymous-token",
 			},
+			OptionsPassthrough: false,
+			Debug:              env == "development",
 		})
+		log.Println("CORS configured for production with origins: https://swftly.dev, https://www.swftly.dev")
 	}
 
 	return c
