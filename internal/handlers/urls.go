@@ -161,6 +161,7 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 		redis.IncrementClicks(short_code)
 
 		user_IP := utils.GetClientIP(r)
+		utils.GetClientLoc(user_IP)
 
 		ua := r.UserAgent()
 		details := utils.ParseUserAgent(ua)
