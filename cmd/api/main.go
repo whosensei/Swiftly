@@ -22,6 +22,8 @@ func main() {
 	}
 	defer db.Close()
 
+	go handlers.CleanupExpiredURLs(db)
+
     redisClient, err := redis.InitRedis()
     if err != nil {
         log.Fatal("Failed to connect to Redis:", err)
