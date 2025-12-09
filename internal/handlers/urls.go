@@ -104,11 +104,19 @@ func (h *UserHandler) AuthenticatedShorten(w http.ResponseWriter, r *http.Reques
 	email := auth.GetUserEmail(r)
 	name := auth.GetUserName(r)
 
-	uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
+	uuid, err := redis.UUIDfromRedis(userID)
 	if err != nil {
-		log.Printf("Failed to ensure user exists: %v", err)
-		http.Error(w, "Failed to process request", http.StatusInternalServerError)
-		return
+		uuid, err = database.EnsureUserExists(h.DB, userID, email, name)
+		if err != nil {
+			log.Printf("Failed to ensure user exists: %v", err)
+			http.Error(w, "Failed to process request", http.StatusInternalServerError)
+			return
+		}
+		go func() {
+			if err := redis.CacheUserUUID(userID, uuid); err != nil {
+				log.Printf("Failed to cache user UUID: %v", err)
+			}
+		}()
 	}
 
 	short_code := utils.Url_shorten(id, longurl)
@@ -165,16 +173,16 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 
 		ua := r.UserAgent()
 		details := utils.ParseUserAgent(ua)
-		fmt.Println(details.Device,details.Browser,details.Platform)
+		fmt.Println(details.Device, details.Browser, details.Platform)
 		//get details for the clicks using Ip
 
 		//country, city               done - device_type, browser, os
 
-		_,err := h.DB.Exec(`
+		_, err := h.DB.Exec(`
             INSERT INTO clicks (url_id, ip_address, user_agent, referer, device_type, browser, os)
             VALUES ($1, $2, $3, $4, $5,$6, $7)
         `, url_id, user_IP, ua, r.Referer(), details.Device, details.Browser, details.Platform)
-		
+
 		if err != nil {
 			fmt.Println("Failed to add")
 			fmt.Println(err)
@@ -206,11 +214,19 @@ func (h *UserHandler) Get_auth_urls(w http.ResponseWriter, r *http.Request) {
 	email := auth.GetUserEmail(r)
 	name := auth.GetUserName(r)
 
-	uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
+	uuid, err := redis.UUIDfromRedis(userID)
 	if err != nil {
-		log.Printf("Failed to ensure user exists: %v", err)
-		http.Error(w, "Failed to process request", http.StatusInternalServerError)
-		return
+		uuid, err = database.EnsureUserExists(h.DB, userID, email, name)
+		if err != nil {
+			log.Printf("Failed to ensure user exists: %v", err)
+			http.Error(w, "Failed to process request", http.StatusInternalServerError)
+			return
+		}
+		go func() {
+			if err := redis.CacheUserUUID(userID, uuid); err != nil {
+				log.Printf("Failed to cache user UUID: %v", err)
+			}
+		}()
 	}
 
 	auth_urls, err := database.Get_auth_urls(h.DB, uuid)
@@ -253,10 +269,19 @@ func (h *UserHandler) Delete_url(w http.ResponseWriter, r *http.Request) {
 	name := auth.GetUserName(r)
 
 	if userID != "" {
-		uuid, err := database.EnsureUserExists(h.DB, userID, email, name)
+		uuid, err := redis.UUIDfromRedis(userID)
 		if err != nil {
-			http.Error(w, "Failed to verify the user", http.StatusInternalServerError)
-			return
+			uuid, err = database.EnsureUserExists(h.DB, userID, email, name)
+			if err != nil {
+				log.Printf("Failed to ensure user exists: %v", err)
+				http.Error(w, "Failed to process request", http.StatusInternalServerError)
+				return
+			}
+			go func() {
+				if err := redis.CacheUserUUID(userID, uuid); err != nil {
+					log.Printf("Failed to cache user UUID: %v", err)
+				}
+			}()
 		}
 
 		owned, err := database.Verify_auth_url_ownership(h.DB, short_code, uuid)

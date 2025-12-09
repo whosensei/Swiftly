@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github/whosensei/shortenn/internal/utils"
 	"log"
@@ -112,4 +113,22 @@ func max(a, b int) int {
         return a
     }
     return b
+}
+
+func UUIDfromRedis(userID string) (string, error) {
+    userKey := fmt.Sprintf("user:%s", userID)
+    uuid := Client.Get(Ctx,userKey).Val()
+    if uuid == "" {
+        return "", errors.New("user not found")
+    }
+    return uuid, nil
+}
+
+func CacheUserUUID(userID string, uuid string) error {
+    userKey := fmt.Sprintf("user:%s",userID)
+    err := Client.Set(Ctx,userKey,uuid,10*time.Minute).Err()   
+    if err != nil {
+        return err
+    }
+    return nil
 }
