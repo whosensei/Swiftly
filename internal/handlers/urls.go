@@ -169,7 +169,17 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 		redis.IncrementClicks(short_code)
 
 		user_IP := utils.GetClientIP(r)
-		utils.GetClientLoc(user_IP)
+		loc, locErr := utils.GetClientLoc(user_IP)
+		country := ""
+		city := ""
+		if locErr == nil && loc != nil {
+			if loc.CountryCode != "" {
+				country = loc.CountryCode
+			} else {
+				country = loc.Country
+			}
+			city = loc.City
+		}
 
 		ua := r.UserAgent()
 		details := utils.ParseUserAgent(ua)
@@ -179,9 +189,9 @@ func (h *UserHandler) Redirect_to_website(w http.ResponseWriter, r *http.Request
 		//country, city               done - device_type, browser, os
 
 		_, err := h.DB.Exec(`
-            INSERT INTO clicks (url_id, ip_address, user_agent, referer, device_type, browser, os)
-            VALUES ($1, $2, $3, $4, $5,$6, $7)
-        `, url_id, user_IP, ua, r.Referer(), details.Device, details.Browser, details.Platform)
+            INSERT INTO clicks (url_id, ip_address, country, city, user_agent, referer, device_type, browser, os)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, url_id, user_IP, country, city, ua, r.Referer(), details.Device, details.Browser, details.Platform)
 
 		if err != nil {
 			fmt.Println("Failed to add")

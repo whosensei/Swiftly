@@ -21,8 +21,6 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("Database connected successfully")
-
 	go handlers.CleanupExpiredURLs(db)
 
 	redisClient, err := redis.InitRedis()
@@ -30,12 +28,10 @@ func main() {
 		log.Fatal("Failed to connect to Redis:", err)
 	}
 	defer redisClient.Close()
-	log.Println("Redis connected successfully")
 
 	if err := auth.InitJWKS(); err != nil {
 		log.Fatal("Failed to initialize JWKS:", err)
 	}
-	log.Println("JWKS initialized successfully")
 
 	mux := http.NewServeMux()
 	handlers.RegisterRoute(mux, db)
@@ -45,5 +41,8 @@ func main() {
 	loggedMux := c.Handler(auth.JWTCheckMiddleware(middleware.Logger(mux)))
 
 	log.Println("The server started")
-	http.ListenAndServe(":8080", loggedMux)
+	err = http.ListenAndServe(":8080", loggedMux)
+	if err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }
