@@ -9,10 +9,11 @@ import (
 )
 
 type ClientLoc struct {
-	Country   string
-	City      string
-	RegionName    string
-	Continent string
+	Country     string `json:"country"`
+	CountryCode string `json:"countryCode"`
+	City        string `json:"city"`
+	RegionName  string `json:"regionName"`
+	Continent   string `json:"continent"`
 }
 
 func GetClientIP(r *http.Request) string {
@@ -34,8 +35,11 @@ func GetClientIP(r *http.Request) string {
 	return ip
 }
 
+//using ipapi for location.
+
 func GetClientLoc(ip string) (*ClientLoc, error) {
-	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=3727391", "104.28.232.97")
+	// Request country, countryCode, city, regionName, continent
+	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=country,countryCode,city,regionName,continent", ip)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make HTTP request: %w", err)

@@ -15,7 +15,7 @@ type Api_response struct {
 type URL struct {
 	Id              string    `json:"id"`
 	Long_url        string    `json:"long_url"`
-	Short_code       string   `json:"short_code"`
+	Short_code      string    `json:"short_code"`
 	Created_At      time.Time `json:"created_at"`
 	Expires_at      time.Time `json:"expires_at"`
 	Clicks          int64     `json:"clicks"`
@@ -30,4 +30,26 @@ type ShortenResponse struct {
 	Anonymous_Token string    `json:"anonymous_token,omitempty"`
 	Remaining       int       `json:"remaining,omitempty"`
 	Permanent       bool      `json:"permanent"`
+}
+
+type AnalyticsGroupCount struct {
+	Value string `json:"value"`
+	Count int64  `json:"count"`
+}
+
+type AnalyticsTimeSeries struct {
+	Date   string `json:"date"`
+	Clicks int64  `json:"clicks"`
+}
+
+type AnalyticsBreakdown struct {
+	Countries     []AnalyticsGroupCount `json:"countries"`
+	Cities        []AnalyticsGroupCount `json:"cities"`
+	Referrers     []AnalyticsGroupCount `json:"referrers"`
+	Devices       []AnalyticsGroupCount `json:"devices"`
+	Browsers      []AnalyticsGroupCount `json:"browsers"`
+	OS            []AnalyticsGroupCount `json:"os"`
+	TimeSeries    []AnalyticsTimeSeries `json:"timeseries"`
+	TotalClicks   int64                 `json:"total_clicks"`
+	LastClickedAt *time.Time            `json:"last_clicked_at,omitempty"`
 }
