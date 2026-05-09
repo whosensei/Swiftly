@@ -21,7 +21,9 @@ func main() {
 	}
 	defer db.Close()
 
+	// Background jobs
 	go handlers.CleanupExpiredURLs(db)
+	go handlers.SyncClickCounts(db)
 
 	redisClient, err := redis.InitRedis()
 	if err != nil {

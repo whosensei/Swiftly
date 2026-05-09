@@ -22,6 +22,7 @@ func CorsInit() *cors.Cors {
 			AllowedMethods: []string{
 				http.MethodGet,
 				http.MethodPost,
+				http.MethodPut,
 				http.MethodOptions,
 				http.MethodDelete,
 			},
@@ -41,6 +42,7 @@ func CorsInit() *cors.Cors {
 			AllowedMethods: []string{
 				http.MethodGet,
 				http.MethodPost,
+				http.MethodPut,
 				http.MethodOptions,
 				http.MethodDelete,
 			},
@@ -51,10 +53,11 @@ func CorsInit() *cors.Cors {
 				"X-Anonymous-token",
 			},
 			OptionsPassthrough: false,
-			Debug:              env == "development",
+			Debug: env == "development",
 		})
 		log.Println("CORS configured for production with origins: https://swftly.dev, https://www.swftly.dev")
 	}
 
 	return c
 }
+
